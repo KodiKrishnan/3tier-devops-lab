@@ -187,14 +187,8 @@ terraform destroy -auto-approve
 
 **Kodi Arasan**  
 ☁️ AWS DevOps Engineer | Cloud Architect | Automation Specialist  
-🔗 LinkedIn  
+🔗 Connect with me on LinkedIn](https://www.linkedin.com/in/kodii2307/)  
 💬 “Automating the cloud, one pipeline at a time.”
-
----
-
-## 🪪 License
-
-Licensed under the **MIT License**.
 
 ---
 
