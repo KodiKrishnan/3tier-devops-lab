@@ -1,0 +1,98 @@
+# --------------------------------------------------------
+# 1️⃣ NetworkPolicy — Allow Prometheus to scrape kube-system metrics
+# --------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-system-metrics
+  namespace: kube-system
+spec:
+  podSelector: {}  # All pods in kube-system
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - port: 9153   # CoreDNS
+          protocol: TCP
+        - port: 10250  # Kubelet
+          protocol: TCP
+        - port: 9100   # Node exporter
+          protocol: TCP
+  policyTypes:
+    - Ingress
+---
+# --------------------------------------------------------
+# 2️⃣ Ensure CoreDNS service exposes metrics port 9153/TCP
+# --------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dns
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+spec:
+  clusterIP: 172.20.0.10
+  selector:
+    k8s-app: kube-dns
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP
+      targetPort: 53
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+    - name: metrics
+      port: 9153
+      protocol: TCP
+      targetPort: 9153
+---
+# --------------------------------------------------------
+# 3️⃣ Kubelet scrape config — enable HTTPS metrics collection
+# --------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kubelet-metrics
+  namespace: prometheus
+  labels:
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  podMetricsEndpoints:
+    - port: https-metrics
+      path: /metrics
+      scheme: https
+      tlsConfig:
+        insecureSkipVerify: true
+  selector:
+    matchLabels:
+      k8s-app: kubelet
+---
+# --------------------------------------------------------
+# 4️⃣ Node Exporter service monitor label alignment
+# --------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-prometheus-node-exporter
+  namespace: prometheus
+  labels:
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - prometheus
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
